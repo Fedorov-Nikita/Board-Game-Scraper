@@ -23,9 +23,9 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
 
     # checking nickname in database
     cursor.execute('''
-					SELECT user_id
-					FROM users 
-					WHERE nickname = ?
+					SELECT u.user_id
+					FROM users u
+					WHERE u.nickname = ?
 					''', (nickname,))
     if not cursor.fetchall():
         flag = True
@@ -40,9 +40,9 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
             country_id = np.nan
             if user_dict['country'] != '':
                 cursor.execute('''
-                            SELECT country_id
-                            FROM countries 
-                            WHERE country = ?
+                            SELECT c.country_id
+                            FROM countries c
+                            WHERE c.country = ?
                             ''', (user_dict['country'],))
                 country_id = cursor.fetchall()
                 if country_id:
@@ -53,9 +53,9 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
             website_id = np.nan
             if user_dict['website'] != '':
                 cursor.execute('''
-                                SELECT link_id
-                                FROM links 
-                                WHERE link = ?
+                                SELECT l.link_id
+                                FROM links l
+                                WHERE l.link = ?
                                 ''', (user_dict['website'],))
                 website_id = cursor.fetchall()
                 if not website_id:
@@ -64,9 +64,9 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
                         ''', (user_dict['website'],))
                     print('Add link to db -> ', user_dict['website'])
                     cursor.execute('''
-                                SELECT link_id
-                                FROM links 
-                                WHERE link = ?
+                                SELECT l.link_id
+                                FROM links l
+                                WHERE l.link = ?
                                 ''', (user_dict['website'],))
                     website_id = cursor.fetchall()[0][0]
 

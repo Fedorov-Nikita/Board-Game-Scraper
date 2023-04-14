@@ -1,6 +1,7 @@
 import time
 import requests as re
 from bs4 import BeautifulSoup
+import sqlite3
 
 
 def get_api_bgg_game_data(unique_ids: list, save_path: str):
@@ -76,3 +77,33 @@ def get_api_user_ratings_data(nickname, save_path=None, sleep=False):
         soup = BeautifulSoup(r.text, features="xml")
         with open(save_path + '/' + str(nickname) + '.xml', 'w', encoding='utf-8') as f:
             f.write(str(soup))
+
+
+def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, ) -> list:
+    """
+    This function get you users nicknames for scraping algorithm
+
+    :param PATH_TO_DB: str - path to database
+    :param n_users: int - number of users which you will get from database
+    :return: list of nicknames
+    """
+    conn = sqlite3.connect(PATH_TO_DB)
+
+    # create a cursor object
+    cursor = conn.cursor()
+
+    cursor.execute(f'''
+                SELECT u.nickname
+                FROM users u
+                ORDER BY u.last_check ASC
+                LIMIT {n_users}
+                ''')
+    data = cursor.fetchall()
+
+    # close the connection
+    conn.close()
+
+    nicknames = []
+    for i in data:
+        nicknames.append(i[0])
+    return nicknames
