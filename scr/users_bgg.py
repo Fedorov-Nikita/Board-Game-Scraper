@@ -8,13 +8,12 @@ from scr.utils import get_user_profile
 
 def add_user_into_db(nickname: str, PATH_TO_DB: str):
     """
-	Function check user nickname in db, and addd info about this user if needed
-	==========
-	Parameters:
-
-	nickname: str - user nickname, his/her profile will be checked on boardgamegeek.com
-	PATH_TO_DB: str - path to local bg_database (sqlite3)
-	"""
+    Function check user nickname in db, and addd info about this user if needed
+    ====================
+    :param nickname: str - user nickname, his/her profile will be checked on boardgamegeek.com
+    :param PATH_TO_DB: str - path to local bg_database (sqlite3)
+    :return:
+    """
     conn = sqlite3.connect(PATH_TO_DB)
 
     # create a cursor object
