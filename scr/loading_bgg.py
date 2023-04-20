@@ -49,7 +49,7 @@ def get_api_user_ratings_data(nickname, PATH_TO_SAVE=None):
     """
     This function takes the boardgamegeek.com username as input
     and returns a pandas DataFrame with all of the user's scores
-
+    ====================
     :param nickname: str - user nickname for getting ratings
     :param PATH_TO_SAVE: str - path for saving scraped user ratings files
     :return: None
@@ -69,14 +69,12 @@ def get_api_user_ratings_data(nickname, PATH_TO_SAVE=None):
 def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, ) -> list:
     """
     This function get you users nicknames for scraping algorithm
-
+    ====================
     :param PATH_TO_DB: str - path to database
     :param n_users: int - number of users which you will get from database
     :return: list of nicknames
     """
     conn = sqlite3.connect(PATH_TO_DB)
-
-    # create a cursor object
     cursor = conn.cursor()
 
     cursor.execute(f'''
@@ -86,8 +84,6 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, ) -> list:
                 LIMIT {n_users}
                 ''')
     data = cursor.fetchall()
-
-    # close the connection
     conn.close()
 
     nicknames = []
