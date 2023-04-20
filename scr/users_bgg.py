@@ -1,9 +1,8 @@
 import os
-from datetime import date
+from datetime import datetime
 
 import numpy as np
 import sqlite3
-from tqdm import tqdm
 from bs4 import BeautifulSoup
 
 from scr.utils import get_user_profile
@@ -60,8 +59,8 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
                                 ''', (user_dict['website'],))
                 conn.close()
 
-                website_id = cursor.fetchall()
-                if not website_id:
+                website = cursor.fetchall()
+                if not website:
                     conn = sqlite3.connect(PATH_TO_DB)
                     cursor = conn.cursor()
                     cursor.execute('''
@@ -77,7 +76,7 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
                     conn.commit()
                     conn.close()
 
-            last_check = date.today()
+            last_check = '2022-12-31'  # date.today()
 
             conn = sqlite3.connect(PATH_TO_DB)
             cursor = conn.cursor()
@@ -111,9 +110,9 @@ def get_comment_id(PATH_TO_DB: str, comment: str) -> int:
     else:
         conn = sqlite3.connect(PATH_TO_DB)
         cursor = conn.cursor()  # create a cursor object
-        cursor.execute(f'''
-                        INSERT INTO comments (comment, ) VALUES (?, )
-                        ''', (comment, ))
+        cursor.execute('''
+                        INSERT INTO comments (comment) VALUES (?)
+                        ''', (comment,))
         conn.commit()
         conn.close()  # close the connection
 
@@ -140,7 +139,7 @@ def get_user_id(PATH_TO_DB: str, nickname: str) -> int:
     :return: user_id - int
     """
     conn = sqlite3.connect(PATH_TO_DB)
-    cursor = conn.cursor() # create a cursor object
+    cursor = conn.cursor()  # create a cursor object
 
     cursor.execute(f'''
                     SELECT u.user_id
@@ -153,14 +152,18 @@ def get_user_id(PATH_TO_DB: str, nickname: str) -> int:
     return int(user_id)
 
 
-def parse_loaded_users_info(PATH_TO_DB: str, PATH_TO_READ: str, PATH_TO_SAVE: str):
+def parse_loaded_users_info(PATH_TO_DB: str, PATH_TO_READ: str, PATH_TO_SAVE: str, PATH_TO_DEL: str):
     files = os.listdir(PATH_TO_READ)
-    for user_file in tqdm(files):
+    counter_update = 0
+    counter_add = 0
+    for user_file in files:
         if user_file == '.DS_Store':
             continue
 
         f = open(PATH_TO_READ + '/' + user_file, 'r')
         ratings = BeautifulSoup(f.read(), 'xml')
+        nickname = user_file.replace('.xml', '')
+
         try:
             total_ratings = int(ratings.find('items').get('totalitems'))
         except:
@@ -168,9 +171,9 @@ def parse_loaded_users_info(PATH_TO_DB: str, PATH_TO_READ: str, PATH_TO_SAVE: st
 
         if total_ratings > 0:
             items = ratings.find_all('item')
+            user_id = get_user_id(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
             for item in items:
                 boardgame_id = int(item.get('objectid'))
-                user_id = get_user_id(PATH_TO_DB=PATH_TO_DB, nickname=user_file.replace('.xml', ''))
 
                 rating = float(item.find('stats').find('rating').get('value'))
                 num_of_plays = int(item.find('numplays').text)
@@ -182,44 +185,84 @@ def parse_loaded_users_info(PATH_TO_DB: str, PATH_TO_READ: str, PATH_TO_SAVE: st
                 status = item.find('status')
 
                 last_modified = status.get('lastmodified')[:10]
+                own = int(status.get('own'))
+                prevowned = int(status.get('prevowned'))
+                for_trade = int(status.get('fortrade'))
+                want = int(status.get('want'))
+                want_to_play = int(status.get('wanttoplay'))
+                want_to_buy = int(status.get('wanttobuy'))
+                wishlist = int(status.get('wishlist'))
+                preordered = int(status.get('preordered'))
 
                 conn = sqlite3.connect(PATH_TO_DB)
                 cursor = conn.cursor()
 
-                cursor.execute('''
-                                SELECT last_modified, comment_id
-                                FROM ratings
-                                WHERE (user_id = ?) AND (boardgame_id = ?) AND (rating = ?)
-                                ''', (user_id, boardgame_id, rating))
-                rating = cursor.fetchall()
+                cursor.execute("""
+                    SELECT rating_id
+                    FROM ratings
+                    WHERE (user_id = ?) AND (boardgame_id = ?) AND (rating = ?) AND (last_modified = ?)
+                    """,
+                               (user_id, boardgame_id, rating, last_modified))
+                rating_info = cursor.fetchall()
                 conn.close()
 
-                if ((not rating) | (last_modified != str(rating[0][0])) | (rating[0][1] != comment_id)):
-
-                    own = int(status.get('own'))
-                    prevowned = int(status.get('prevowned'))
-                    for_trade = int(status.get('fortrade'))
-                    want = int(status.get('want'))
-                    want_to_play = int(status.get('wanttoplay'))
-                    want_to_buy = int(status.get('wanttobuy'))
-                    wishlist = int(status.get('wishlist'))
-                    preordered = int(status.get('preordered'))
+                if rating_info:
+                    rating_id = int(rating_info[0][0])
 
                     conn = sqlite3.connect(PATH_TO_DB)
-                    cursor = conn.cursor()  # create a cursor object
-                    cursor.execute('''
-                        INSERT INTO ratings (user_id, boardgame_id, rating, num_of_plays, comment_id,
-                            own, prevowned, for_trade, want, want_to_play,
-                            want_to_buy, wishlist, preordered, last_modified) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            ''', (user_id, boardgame_id, rating, num_of_plays, comment_id,
-                                  own, prevowned, for_trade, want, want_to_play,
-                                  want_to_buy, wishlist, preordered, last_modified))
-                    conn.commit()  # commit the changes
-                    conn.close()  # close the connection
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE ratings 
+                        SET num_of_plays = ?, comment_id = ?, own = ?, 
+                            prevowned = ?, for_trade = ?, want = ?, 
+                            want_to_play = ?, want_to_buy = ?, wishlist = ?, 
+                            preordered = ?
+                        WHERE rating_id = ?
+                        """,
+                                   (num_of_plays, comment_id, own, prevowned, for_trade,
+                                    want, want_to_play, want_to_buy, wishlist, preordered,
+                                    rating_id))
+                    conn.commit()
+                    conn.close()
+                    counter_update += 1
+
+                else:
+                    conn = sqlite3.connect(PATH_TO_DB)
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT INTO ratings (user_id, boardgame_id, rating, 
+                        num_of_plays, comment_id, own, prevowned, for_trade, 
+                        want, want_to_play, want_to_buy, wishlist, preordered, 
+                        last_modified) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                                   (user_id, boardgame_id, rating, num_of_plays,
+                                    comment_id, own, prevowned, for_trade, want,
+                                    want_to_play, want_to_buy, wishlist, preordered,
+                                    last_modified))
+                    conn.commit()
+                    conn.close()
+                    counter_add += 1
+
+            os.replace(PATH_TO_READ + '/' + user_file,  # move file from buffer dir
+                       PATH_TO_SAVE + '/' + user_file)  # to saving dir
 
         else:
-            continue
-        # move file to constant dir
-        os.replace(PATH_TO_READ + '/' + user_file,
-                   PATH_TO_SAVE + '/' + user_file)
+            os.replace(PATH_TO_READ + '/' + user_file,  # move file from buffer dir
+                       PATH_TO_DEL + '/' + user_file)  # to temporary dir
+
+        # Save checking date into db
+        last_check = datetime.strptime(str(ratings.find('items').get('pubdate')),
+                                       '%a, %d %b %Y %H:%M:%S %z').isoformat()[:10]
+
+        conn = sqlite3.connect(PATH_TO_DB)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users 
+            SET last_check = ? 
+            WHERE nickname = ?
+            """,
+                       (last_check, nickname))
+        conn.commit()
+        conn.close()
+    print(f'Updated: {counter_update} ratings, added: {counter_add} ratings')
