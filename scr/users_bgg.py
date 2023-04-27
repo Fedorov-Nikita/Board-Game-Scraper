@@ -260,6 +260,20 @@ def parse_status(status):
         want_to_buy, wishlist, preordered
 
 
+def add_to_deleted(PATH_TO_DB: str,
+                   nickname: str):
+    conn = sqlite3.connect(PATH_TO_DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+                UPDATE users 
+                SET deleted = 1
+                WHERE nickname = ?
+                """,
+                   (nickname, ))
+    conn.commit()
+    conn.close()
+
+
 def parse_loaded_users_info(PATH_TO_DB: str,
                             PATH_TO_READ: str,
                             PATH_TO_SAVE: str,
@@ -278,6 +292,9 @@ def parse_loaded_users_info(PATH_TO_DB: str,
         try:
             total_ratings = int(ratings.find('items').get('totalitems'))
         except:
+            message = str(ratings.find('message').text)
+            if message == 'Invalid username specified':
+                add_to_deleted(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
             continue
 
         if total_ratings > 0:
