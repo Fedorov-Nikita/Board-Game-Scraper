@@ -66,7 +66,7 @@ def get_api_user_ratings_data(nickname, PATH_TO_SAVE=None):
             f.write(str(soup))
 
 
-def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, ) -> list:
+def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> list:
     """
     This function get you users nicknames for scraping algorithm
     ====================
@@ -74,13 +74,21 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, ) -> list:
     :param n_users: int - number of users which you will get from database
     :return: list of nicknames
     """
+    if with_ratings:
+        join_type = 'INNER'
+    else:
+        join_type = 'LEFT OUTER'
+
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
-
     cursor.execute(f'''
                 SELECT u.nickname
                 FROM users u
+                {join_type} JOIN (SELECT DISTINCT user_id
+                            FROM ratings) r
+                ON u.user_id = r.user_id
                 ORDER BY u.last_check ASC
+                WHERE u.deleted = 0
                 LIMIT {n_users}
                 ''')
     data = cursor.fetchall()
