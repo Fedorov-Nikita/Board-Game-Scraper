@@ -281,6 +281,7 @@ def parse_loaded_users_info(PATH_TO_DB: str,
     files = os.listdir(PATH_TO_READ)
     counter_update = 0
     counter_add = 0
+    counter_deleted = 0
     for user_file in files:
         if user_file == '.DS_Store':
             continue
@@ -295,6 +296,7 @@ def parse_loaded_users_info(PATH_TO_DB: str,
             message = str(ratings.find('message').text)
             if message == 'Invalid username specified':
                 add_to_deleted(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
+                counter_deleted += 1
             continue
 
         if total_ratings > 0:
@@ -349,4 +351,4 @@ def parse_loaded_users_info(PATH_TO_DB: str,
 
         upd_checking_date_in_db(PATH_TO_DB, last_check, nickname)
 
-    print(f'Updated: {counter_update} ratings, added: {counter_add} ratings')
+    print(f'Updated: {counter_update} ratings, added: {counter_add} ratings, deleted accounts {counter_deleted}.')
