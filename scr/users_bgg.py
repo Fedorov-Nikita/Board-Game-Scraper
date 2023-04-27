@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
+import sqlite3
 
 import numpy as np
-import sqlite3
 from bs4 import BeautifulSoup
 
 from scr.utils import get_user_profile
@@ -20,10 +20,10 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
     cursor = conn.cursor()
 
     cursor.execute('''
-					SELECT u.user_id
-					FROM users u
-					WHERE u.nickname = ?
-					''', (nickname,))
+                SELECT u.user_id
+                FROM users u
+                WHERE u.nickname = ?
+                ''', (nickname,))
     conn.close()
     if not cursor.fetchall():
         try:
@@ -53,10 +53,10 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
                 conn = sqlite3.connect(PATH_TO_DB)
                 cursor = conn.cursor()
                 cursor.execute('''
-                                SELECT l.link_id
-                                FROM links l
-                                WHERE l.link = ?
-                                ''', (user_dict['website'],))
+                            SELECT l.link_id
+                            FROM links l
+                            WHERE l.link = ?
+                            ''', (user_dict['website'],))
                 conn.close()
 
                 website = cursor.fetchall()
@@ -152,7 +152,118 @@ def get_user_id(PATH_TO_DB: str, nickname: str) -> int:
     return int(user_id)
 
 
-def parse_loaded_users_info(PATH_TO_DB: str, PATH_TO_READ: str, PATH_TO_SAVE: str, PATH_TO_DEL: str):
+def add_rating_into_db(PATH_TO_DB: str,
+                       user_id: int,
+                       boardgame_id: int,
+                       rating: float,
+                       num_of_plays: int,
+                       comment_id: int,
+                       own: int,
+                       prevowned: int,
+                       for_trade: int,
+                       want: int,
+                       want_to_play: int,
+                       want_to_buy: int,
+                       wishlist: int,
+                       preordered: int,
+                       last_modified: str):
+    conn = sqlite3.connect(PATH_TO_DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO ratings (user_id, boardgame_id, rating, 
+        num_of_plays, comment_id, own, prevowned, for_trade, 
+        want, want_to_play, want_to_buy, wishlist, preordered, 
+        last_modified) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, boardgame_id, rating, num_of_plays,
+              comment_id, own, prevowned, for_trade, want,
+              want_to_play, want_to_buy, wishlist, preordered,
+              last_modified))
+    conn.commit()
+    conn.close()
+
+
+def upd_rating_in_db(PATH_TO_DB: str,
+                     num_of_plays: int,
+                     comment_id: int,
+                     own: int,
+                     prevowned: int,
+                     for_trade: int,
+                     want: int,
+                     want_to_play: int,
+                     want_to_buy: int,
+                     wishlist: int,
+                     preordered: int,
+                     rating_id: int):
+    conn = sqlite3.connect(PATH_TO_DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+                UPDATE ratings 
+                SET num_of_plays = ?, comment_id = ?, own = ?, 
+                    prevowned = ?, for_trade = ?, want = ?, 
+                    want_to_play = ?, want_to_buy = ?, wishlist = ?, 
+                    preordered = ?
+                WHERE rating_id = ?
+                """,
+                   (num_of_plays, comment_id, own, prevowned, for_trade,
+                    want, want_to_play, want_to_buy, wishlist, preordered,
+                    rating_id))
+    conn.commit()
+    conn.close()
+
+
+def upd_checking_date_in_db(PATH_TO_DB: str,
+                            last_check: str,
+                            nickname: str):
+    conn = sqlite3.connect(PATH_TO_DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+                UPDATE users 
+                SET last_check = ? 
+                WHERE nickname = ?
+                """,
+                   (last_check, nickname))
+    conn.commit()
+    conn.close()
+
+
+def get_rating_id(PATH_TO_DB: str,
+                  user_id: int,
+                  boardgame_id: int,
+                  rating: float,
+                  last_modified: str):
+    conn = sqlite3.connect(PATH_TO_DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+                        SELECT rating_id
+                        FROM ratings
+                        WHERE (user_id = ?) AND (boardgame_id = ?) AND (rating = ?) AND (last_modified = ?)
+                        """,
+                   (user_id, boardgame_id, rating, last_modified))
+    rating_info = cursor.fetchall()
+    conn.close()
+    return rating_info
+
+
+def parse_status(status):
+    last_modified = status.get('lastmodified')[:10]
+    own = int(status.get('own'))
+    prevowned = int(status.get('prevowned'))
+    for_trade = int(status.get('fortrade'))
+    want = int(status.get('want'))
+    want_to_play = int(status.get('wanttoplay'))
+    want_to_buy = int(status.get('wanttobuy'))
+    wishlist = int(status.get('wishlist'))
+    preordered = int(status.get('preordered'))
+    return last_modified, own, prevowned, for_trade, want, want_to_play, \
+        want_to_buy, wishlist, preordered
+
+
+def parse_loaded_users_info(PATH_TO_DB: str,
+                            PATH_TO_READ: str,
+                            PATH_TO_SAVE: str,
+                            PATH_TO_DEL: str):
     files = os.listdir(PATH_TO_READ)
     counter_update = 0
     counter_add = 0
@@ -184,64 +295,28 @@ def parse_loaded_users_info(PATH_TO_DB: str, PATH_TO_READ: str, PATH_TO_SAVE: st
                     comment_id = None
                 status = item.find('status')
 
-                last_modified = status.get('lastmodified')[:10]
-                own = int(status.get('own'))
-                prevowned = int(status.get('prevowned'))
-                for_trade = int(status.get('fortrade'))
-                want = int(status.get('want'))
-                want_to_play = int(status.get('wanttoplay'))
-                want_to_buy = int(status.get('wanttobuy'))
-                wishlist = int(status.get('wishlist'))
-                preordered = int(status.get('preordered'))
+                # Parse status from xml
+                last_modified, own, prevowned, for_trade, want, want_to_play, \
+                    want_to_buy, wishlist, preordered = parse_status(status)
 
-                conn = sqlite3.connect(PATH_TO_DB)
-                cursor = conn.cursor()
-
-                cursor.execute("""
-                    SELECT rating_id
-                    FROM ratings
-                    WHERE (user_id = ?) AND (boardgame_id = ?) AND (rating = ?) AND (last_modified = ?)
-                    """,
-                               (user_id, boardgame_id, rating, last_modified))
-                rating_info = cursor.fetchall()
-                conn.close()
+                rating_info = get_rating_id(PATH_TO_DB, user_id, boardgame_id,
+                                            rating, last_modified)
 
                 if rating_info:
                     rating_id = int(rating_info[0][0])
 
-                    conn = sqlite3.connect(PATH_TO_DB)
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        UPDATE ratings 
-                        SET num_of_plays = ?, comment_id = ?, own = ?, 
-                            prevowned = ?, for_trade = ?, want = ?, 
-                            want_to_play = ?, want_to_buy = ?, wishlist = ?, 
-                            preordered = ?
-                        WHERE rating_id = ?
-                        """,
-                                   (num_of_plays, comment_id, own, prevowned, for_trade,
-                                    want, want_to_play, want_to_buy, wishlist, preordered,
-                                    rating_id))
-                    conn.commit()
-                    conn.close()
+                    # Update data into db
+                    upd_rating_in_db(PATH_TO_DB, num_of_plays, comment_id, own,
+                                     prevowned, for_trade, want, want_to_play,
+                                     want_to_buy, wishlist, preordered, rating_id)
                     counter_update += 1
 
                 else:
-                    conn = sqlite3.connect(PATH_TO_DB)
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        INSERT INTO ratings (user_id, boardgame_id, rating, 
-                        num_of_plays, comment_id, own, prevowned, for_trade, 
-                        want, want_to_play, want_to_buy, wishlist, preordered, 
-                        last_modified) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                                   (user_id, boardgame_id, rating, num_of_plays,
-                                    comment_id, own, prevowned, for_trade, want,
-                                    want_to_play, want_to_buy, wishlist, preordered,
-                                    last_modified))
-                    conn.commit()
-                    conn.close()
+                    # Add data into db
+                    add_rating_into_db(PATH_TO_DB, user_id, boardgame_id, rating, num_of_plays,
+                                       comment_id, own, prevowned, for_trade, want,
+                                       want_to_play, want_to_buy, wishlist, preordered,
+                                       last_modified)
                     counter_add += 1
 
             os.replace(PATH_TO_READ + '/' + user_file,  # move file from buffer dir
@@ -255,14 +330,6 @@ def parse_loaded_users_info(PATH_TO_DB: str, PATH_TO_READ: str, PATH_TO_SAVE: st
         last_check = datetime.strptime(str(ratings.find('items').get('pubdate')),
                                        '%a, %d %b %Y %H:%M:%S %z').isoformat()[:10]
 
-        conn = sqlite3.connect(PATH_TO_DB)
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE users 
-            SET last_check = ? 
-            WHERE nickname = ?
-            """,
-                       (last_check, nickname))
-        conn.commit()
-        conn.close()
+        upd_checking_date_in_db(PATH_TO_DB, last_check, nickname)
+
     print(f'Updated: {counter_update} ratings, added: {counter_add} ratings')
