@@ -317,7 +317,7 @@ def parse_user_collection_info(PATH_TO_DB: str,
         message = str(ratings.find('message').text)
         if message == 'Invalid username specified':
             add_to_deleted(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
-        continue
+        return
 
     if total_ratings > 0:
         items = ratings.find_all('item')
