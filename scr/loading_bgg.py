@@ -87,8 +87,8 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
                 {join_type} JOIN (SELECT DISTINCT user_id
                             FROM ratings) r
                 ON u.user_id = r.user_id
-                ORDER BY u.last_check ASC
                 WHERE u.deleted = 0
+                ORDER BY u.last_check ASC
                 LIMIT {n_users}
                 ''')
     data = cursor.fetchall()
