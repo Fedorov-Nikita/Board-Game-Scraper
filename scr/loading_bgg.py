@@ -51,7 +51,7 @@ def get_api_user_ratings_data(nickname, PATH_TO_SAVE=None):
     and returns a pandas DataFrame with all of the user's scores
     ====================
     :param nickname: str - user nickname for getting ratings
-    :param PATH_TO_SAVE: str - path for saving scraped user ratings files
+    :param PATH_TO_SAVE: str - path to dir for saving scraped .xml user ratings files
     :return: None
     """
     url_coll_main = 'https://api.geekdo.com/xmlapi/collection/'
@@ -70,8 +70,10 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
     """
     This function get you users nicknames for scraping algorithm
     ====================
-    :param PATH_TO_DB: str - path to database
+    :param PATH_TO_DB: str - path to SQLite database file
     :param n_users: int - number of users which you will get from database
+    :param with_ratings: boolean - if True, func return list of users with ratings
+        if False, func return list of users without ratings
     :return: list of nicknames
     """
     if with_ratings:
@@ -100,17 +102,24 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
     return nicknames
 
 
-def load_stack_of_users_to_buffer(PATH_TO_DB: str, PATH_TO_SAVE: str, n_users=10000, pre_request=True):
+def load_stack_of_users_to_buffer(PATH_TO_DB: str,
+                                  PATH_TO_SAVE: str,
+                                  n_users=10000,
+                                  pre_request=True,
+                                  with_ratings=True):
     """
     This function load user ratings data for the users with the oldest update date
     ====================
-    :param PATH_TO_DB:
-    :param PATH_TO_SAVE:
-    :param n_users:
-    :param pre_request:
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param PATH_TO_SAVE: str - path to dir for saving scraped .xml user ratings files
+    :param n_users: int - number of users which you will get from database
+    :param pre_request: boolean - if True, func do preparation requests for list of users
+        if False, without preparation requests
+    :param with_ratings: boolean - if True, func return list of users with ratings
+        if False, func return list of users without ratings
     :return: None
     """
-    nicknames = get_users_for_scrap(PATH_TO_DB=PATH_TO_DB, n_users=n_users)
+    nicknames = get_users_for_scrap(PATH_TO_DB=PATH_TO_DB, n_users=n_users, with_ratings=with_ratings)
     if pre_request:
         for nickname in tqdm(nicknames):
             get_api_user_ratings_data(nickname)

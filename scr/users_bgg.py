@@ -10,11 +10,11 @@ from scr.utils import get_user_profile
 
 def add_user_into_db(nickname: str, PATH_TO_DB: str):
     """
-    Function check user nickname in db, and addd info about this user if needed
+    Function check user nickname in db, and add info about this user if needed
     ====================
-    :param nickname: str - user nickname, his/her profile will be checked on boardgamegeek.com
-    :param PATH_TO_DB: str - path to local bg_database (sqlite3)
-    :return:
+    :param nickname: str - user's nickname on BGG.com for scraping
+    :param PATH_TO_DB: str - path to SQLite database file
+    :return: None
     """
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
@@ -95,6 +95,13 @@ def add_user_into_db(nickname: str, PATH_TO_DB: str):
 
 
 def get_comment_id(PATH_TO_DB: str, comment: str) -> int:
+    """
+    Function for getting comment id from database and add comment to database if it's needed
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param comment: str - user's comment
+    :return: int - comment id in database
+    """
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()  # create a cursor object
 
@@ -134,7 +141,7 @@ def get_user_id(PATH_TO_DB: str, nickname: str) -> int:
     """
     Get user_id from database using nickname
     ====================
-    :param PATH_TO_DB: str - path to local bg_database (sqlite3)
+    :param PATH_TO_DB: str - path to SQLite database file
     :param nickname: str - user nickname, his/her profile will be checked on boardgamegeek.com
     :return: user_id - int
     """
@@ -167,6 +174,26 @@ def add_rating_into_db(PATH_TO_DB: str,
                        wishlist: int,
                        preordered: int,
                        last_modified: str):
+    """
+    Function for add rating in database
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param user_id: int - user id from database
+    :param boardgame_id: int - boardgame id from database
+    :param rating: float - rating which user add for boardgame
+    :param num_of_plays: int - user's number of plays in this boardgame
+    :param comment_id: int - id of comment which user add for this game
+    :param own: int - own status flag, 0 or 1
+    :param prevowned: int - prevowned status flag, 0 or 1
+    :param for_trade: int - for_trade status flag, 0 or 1
+    :param want: int - want status flag, 0 or 1
+    :param want_to_play: int - want_to_play status flag, 0 or 1
+    :param want_to_buy: int - want_to_buy status flag, 0 or 1
+    :param wishlist: int - wishlist status flag, 0 or 1
+    :param preordered: int - preordered status flag, 0 or 1
+    :param last_modified: str - date of last modifying rating in iso format
+    :return: None
+    """
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
     cursor.execute("""
@@ -195,6 +222,23 @@ def upd_rating_in_db(PATH_TO_DB: str,
                      wishlist: int,
                      preordered: int,
                      rating_id: int):
+    """
+    Function for updating rating in database
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param num_of_plays: int - user's number of plays in this boardgame
+    :param comment_id: int - id of comment which user add for this game
+    :param own: int - own status flag, 0 or 1
+    :param prevowned: int - prevowned status flag, 0 or 1
+    :param for_trade: int - for_trade status flag, 0 or 1
+    :param want: int - want status flag, 0 or 1
+    :param want_to_play: int - want_to_play status flag, 0 or 1
+    :param want_to_buy: int - want_to_buy status flag, 0 or 1
+    :param wishlist: int - wishlist status flag, 0 or 1
+    :param preordered: int - preordered status flag, 0 or 1
+    :param rating_id: int - rating id for updating
+    :return: None
+    """
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
     cursor.execute("""
@@ -215,6 +259,14 @@ def upd_rating_in_db(PATH_TO_DB: str,
 def upd_checking_date_in_db(PATH_TO_DB: str,
                             last_check: str,
                             nickname: str):
+    """
+    Function for updating last check date in database
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param last_check: str - date of last checking user in iso format
+    :param nickname: str - user's nickname on BGG.com for scraping
+    :return: None
+    """
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
     cursor.execute("""
@@ -232,6 +284,16 @@ def get_rating_id(PATH_TO_DB: str,
                   boardgame_id: int,
                   rating: float,
                   last_modified: str):
+    """
+    Function for getting rating id from database
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param user_id: int - user id from database
+    :param boardgame_id: int - boardgame id from database
+    :param rating: float - rating which user add for boardgame
+    :param last_modified: str - date of last modifying rating in iso format
+    :return: list of tuples with rating id
+    """
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
 
@@ -247,6 +309,12 @@ def get_rating_id(PATH_TO_DB: str,
 
 
 def parse_status(status):
+    """
+    Function for parsing date of last modifying rating and all status flags
+    ====================
+    :param status: BS4-file from xml with user boardgame's status
+    :return: Date of last modifying and all status flags
+    """
     last_modified = status.get('lastmodified')[:10]
     own = int(status.get('own'))
     prevowned = int(status.get('prevowned'))
@@ -262,6 +330,14 @@ def parse_status(status):
 
 def add_to_deleted(PATH_TO_DB: str,
                    nickname: str):
+    """
+    Function for additing 'deleted' flag for user into SQLite database
+    for user's with deleted account on BGG.com
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param nickname: str - user's nickname on BGG.com for scraping
+    :return: None
+    """
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
     cursor.execute("""
@@ -275,6 +351,14 @@ def add_to_deleted(PATH_TO_DB: str,
 
 
 def parse_item(PATH_TO_DB, item, user_id):
+    """
+    Function for parsing user's rating and saving it into SQLite database
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param item: BS4-file from xml with user's rating
+    :param user_id: user's id in database
+    :return: None
+    """
     boardgame_id = int(item.get('objectid'))
 
     rating = float(item.find('stats').find('rating').get('value'))
@@ -311,6 +395,14 @@ def parse_item(PATH_TO_DB, item, user_id):
 def parse_user_collection_info(PATH_TO_DB: str,
                                ratings,
                                nickname: str):
+    """
+    Function for parsing user's ratings and saving them into SQLite database
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param ratings: BS4-file from xml with user's ratings
+    :param nickname: str - user's nickname on BGG.com for scraping
+    :return: None
+    """
     try:
         total_ratings = int(ratings.find('items').get('totalitems'))
     except:
@@ -336,6 +428,15 @@ def parse_loaded_users_info(PATH_TO_DB: str,
                             PATH_TO_READ: str,
                             PATH_TO_SAVE: str,
                             PATH_TO_DEL: str):
+    """
+    Function for parsing loaded .xml user ratings files after scraping
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param PATH_TO_READ: str - path to dir with scraped .xml user ratings files
+    :param PATH_TO_SAVE: str - path to dir for saving scraped .xml files for users with ratings
+    :param PATH_TO_DEL: str - path to dir for saving scraped .xml files for users without ratings
+    :return:
+    """
     files = os.listdir(PATH_TO_READ)
     for user_file in files:
         if user_file == '.DS_Store':
