@@ -83,18 +83,20 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
 
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
-    cursor.execute(f'''
-                SELECT u.nickname
-                FROM users u
-                {join_type} JOIN (SELECT DISTINCT user_id
-                            FROM ratings) r
-                ON u.user_id = r.user_id
-                WHERE u.deleted = 0
-                ORDER BY u.last_check ASC
-                LIMIT {n_users}
-                ''')
-    data = cursor.fetchall()
-    conn.close()
+    try:
+        cursor.execute(f'''
+                    SELECT u.nickname
+                    FROM users u
+                    {join_type} JOIN (SELECT DISTINCT user_id
+                                FROM ratings) r
+                    ON u.user_id = r.user_id
+                    WHERE u.deleted = 0
+                    ORDER BY u.last_check ASC
+                    LIMIT {n_users}
+                    ''')
+        data = cursor.fetchall()
+    finally:
+        conn.close()
 
     nicknames = []
     for i in data:
