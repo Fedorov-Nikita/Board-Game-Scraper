@@ -5,6 +5,7 @@ import sqlite3
 import numpy as np
 from bs4 import BeautifulSoup
 
+
 from scr.utils import get_user_profile
 
 
@@ -322,7 +323,7 @@ def get_rating_id(PATH_TO_DB: str,
     cursor = conn.cursor()
     try:
         cursor.execute("""
-                            SELECT rating_id
+                            SELECT rating_id, num_of_plays
                             FROM ratings
                             WHERE (user_id = ?) AND (boardgame_id = ?) AND (rating = ?) AND (last_modified = ?)
                             """,
@@ -405,12 +406,12 @@ def parse_item(PATH_TO_DB, item, user_id):
                                 rating, last_modified)
 
     if rating_info:
-        rating_id = int(rating_info[0][0])
-
-        # Update data into db
-        upd_rating_in_db(PATH_TO_DB, num_of_plays, comment_id, own,
-                         prevowned, for_trade, want, want_to_play,
-                         want_to_buy, wishlist, preordered, rating_id)
+        if num_of_plays != int(rating_info[0][1]):
+            rating_id = int(rating_info[0][0])
+            # Update data into db
+            upd_rating_in_db(PATH_TO_DB, num_of_plays, comment_id, own,
+                             prevowned, for_trade, want, want_to_play,
+                             want_to_buy, wishlist, preordered, rating_id)
     else:
         # Add data into db
         add_rating_into_db(PATH_TO_DB, user_id, boardgame_id, rating, num_of_plays,
@@ -421,13 +422,19 @@ def parse_item(PATH_TO_DB, item, user_id):
 
 def parse_user_collection_info(PATH_TO_DB: str,
                                ratings,
-                               nickname: str):
+                               nickname: str,
+                               PATH_TO_READ=None,
+                               PATH_TO_SAVE=None,
+                               PATH_TO_DEL=None):
     """
     Function for parsing user's ratings and saving them into SQLite database
     ====================
     :param PATH_TO_DB: str - path to SQLite database file
     :param ratings: BS4-file from xml with user's ratings
     :param nickname: str - user's nickname on BGG.com for scraping
+    :param PATH_TO_READ: str - path to dir with scraped .xml user ratings files
+    :param PATH_TO_SAVE: str - path to dir for saving scraped .xml files for users with ratings
+    :param PATH_TO_DEL: str - path to dir for saving scraped .xml files for users without ratings
     :return: None
     """
     try:
@@ -436,7 +443,9 @@ def parse_user_collection_info(PATH_TO_DB: str,
         message = str(ratings.find('message').text)
         if message == 'Invalid username specified':
             add_to_deleted(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
-        return
+            return True
+        elif message == 'Your request for this collection has been accepted and will be processed.  Please try again later for access.':
+            return False
 
     if total_ratings > 0:
         items = ratings.find_all('item')
@@ -444,11 +453,19 @@ def parse_user_collection_info(PATH_TO_DB: str,
         for item in items:
             parse_item(PATH_TO_DB, item, user_id)
 
+        if PATH_TO_SAVE:
+            os.replace(PATH_TO_READ + '/' + nickname + '.xml',  # move file from buffer dir
+                       PATH_TO_SAVE + '/' + nickname + '.xml')  # to saving dir
+    elif PATH_TO_DEL:
+        os.replace(PATH_TO_READ + '/' + nickname + '.xml',  # move file from buffer dir
+                   PATH_TO_DEL + '/' + nickname + '.xml')  # to temporary dir
+
     # Save checking date into db
     last_check = datetime.strptime(str(ratings.find('items').get('pubdate')),
                                    '%a, %d %b %Y %H:%M:%S %z').isoformat()[:10]
 
     upd_checking_date_in_db(PATH_TO_DB, last_check, nickname)
+    return True
 
 
 def parse_loaded_users_info(PATH_TO_DB: str,
@@ -473,29 +490,5 @@ def parse_loaded_users_info(PATH_TO_DB: str,
         ratings = BeautifulSoup(f.read(), 'xml')
         nickname = user_file.replace('.xml', '')
 
-        try:
-            total_ratings = int(ratings.find('items').get('totalitems'))
-        except:
-            message = str(ratings.find('message').text)
-            if message == 'Invalid username specified':
-                add_to_deleted(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
-            continue
-
-        if total_ratings > 0:
-            items = ratings.find_all('item')
-            user_id = get_user_id(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
-            for item in items:
-                parse_item(PATH_TO_DB, item, user_id)
-
-            os.replace(PATH_TO_READ + '/' + user_file,  # move file from buffer dir
-                       PATH_TO_SAVE + '/' + user_file)  # to saving dir
-
-        else:
-            os.replace(PATH_TO_READ + '/' + user_file,  # move file from buffer dir
-                       PATH_TO_DEL + '/' + user_file)  # to temporary dir
-
-        # Save checking date into db
-        last_check = datetime.strptime(str(ratings.find('items').get('pubdate')),
-                                       '%a, %d %b %Y %H:%M:%S %z').isoformat()[:10]
-
-        upd_checking_date_in_db(PATH_TO_DB, last_check, nickname)
+        parse_user_collection_info(PATH_TO_DB, ratings, nickname,
+                                   PATH_TO_READ, PATH_TO_SAVE, PATH_TO_DEL)

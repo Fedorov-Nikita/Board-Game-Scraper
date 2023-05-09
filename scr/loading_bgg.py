@@ -45,25 +45,31 @@ def get_api_bgg_game_data(unique_ids: list, save_path: str):
             f.write(str(bg))
 
 
-def get_api_user_ratings_data(nickname, PATH_TO_SAVE=None):
+def get_api_user_ratings_data(nickname, PATH_TO_SAVE=None, return_request=False):
     """
     This function takes the boardgamegeek.com username as input
     and returns a pandas DataFrame with all of the user's scores
     ====================
     :param nickname: str - user nickname for getting ratings
     :param PATH_TO_SAVE: str - path to dir for saving scraped .xml user ratings files
-    :return: None
+    :param return_request: bool - if True return BeautifulSoup variable
+    :return: BeautifulSoup format
     """
     url_coll_main = 'https://api.geekdo.com/xmlapi/collection/'
     params = '?rated=1'
 
-    time.sleep(0.33)
     r = re.get(url_coll_main + nickname + params)
 
     if PATH_TO_SAVE:
         soup = BeautifulSoup(r.text, features="xml")
         with open(PATH_TO_SAVE + '/' + str(nickname) + '.xml', 'w', encoding='utf-8') as f:
             f.write(str(soup))
+
+    if return_request:
+        soup = BeautifulSoup(r.text, features="xml")
+        return soup
+
+    time.sleep(0.33)
 
 
 def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> list:
@@ -85,7 +91,7 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
     cursor = conn.cursor()
     try:
         cursor.execute(f'''
-                    SELECT u.nickname
+                    SELECT u.nickname, u.last_check
                     FROM users u
                     {join_type} JOIN (SELECT DISTINCT user_id
                                 FROM ratings) r
@@ -98,10 +104,11 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
     finally:
         conn.close()
 
-    nicknames = []
-    for i in data:
-        nicknames.append(i[0])
-    return nicknames
+    return data
+    # nicknames = []
+    # for i in data:
+    #     nicknames.append(i[0])
+    # return nicknames
 
 
 def load_stack_of_users_to_buffer(PATH_TO_DB: str,
@@ -127,5 +134,3 @@ def load_stack_of_users_to_buffer(PATH_TO_DB: str,
             get_api_user_ratings_data(nickname)
     for nickname in tqdm(nicknames):
         get_api_user_ratings_data(nickname, PATH_TO_SAVE=PATH_TO_SAVE)
-
-
