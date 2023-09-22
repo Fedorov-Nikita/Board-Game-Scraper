@@ -444,7 +444,7 @@ def parse_user_collection_info(PATH_TO_DB: str,
         if message == 'Invalid username specified':
             add_to_deleted(PATH_TO_DB=PATH_TO_DB, nickname=nickname)
             return True
-        elif message == 'Your request for this collection has been accepted and will be processed.  Please try again later for access.':
+        else:
             return False
 
     if total_ratings > 0:

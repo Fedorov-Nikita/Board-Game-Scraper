@@ -2,6 +2,7 @@ import time
 import requests as re
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+from datetime import datetime, timedelta
 import sqlite3
 
 
@@ -109,6 +110,37 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
     # for i in data:
     #     nicknames.append(i[0])
     # return nicknames
+
+
+def get_loading_stat_from_db(PATH_TO_DB: str,
+                             today_loaded=False) -> list:
+    """
+    This function get number of users for updating
+    ====================
+    :param PATH_TO_DB: str - path to SQLite database file
+    :param today_loaded: boolean - if True returns number for today checked
+    :return: list numbers of users
+    """
+
+    today_iso = (datetime.today() - timedelta(days=30)).isoformat()[:10]
+    if today_loaded:
+        today_ = '>='
+    else:
+        today_ = '<'
+    conn = sqlite3.connect(PATH_TO_DB)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(f'''
+                        SELECT count(*)
+                        FROM users u
+                        WHERE u.deleted = 0
+                          AND u.last_check {today_} '{today_iso}'
+                        ''')
+        data = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return data
 
 
 def load_stack_of_users_to_buffer(PATH_TO_DB: str,
