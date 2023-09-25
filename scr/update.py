@@ -24,9 +24,11 @@ def daily(PATH_TO_DB: str,
     :return: None
     """
     start_datetime = datetime.today()
+    print(f'Started at {start_datetime.isoformat()[11:19]}')
     # Update info for users with ratings
     users = get_users_for_scrap(PATH_TO_DB=PATH_TO_DB, n_users=n_users, with_ratings=with_ratings)
     nicknames = []
+    counter = 0
     for user in tqdm(users, desc='Check users'):
         try:
             if get_user_profile(user[0])['last_login'] >= user[1]:
@@ -34,6 +36,7 @@ def daily(PATH_TO_DB: str,
             else:
                 last_check = datetime.today().isoformat()[:10]
                 upd_checking_date_in_db(PATH_TO_DB, last_check, user[0])
+                counter += 1
         except:
             nicknames.append(user[0])
 
@@ -47,6 +50,7 @@ def daily(PATH_TO_DB: str,
             flag = parse_user_collection_info(PATH_TO_DB, ratings, nickname)
             if flag:
                 nicknames.remove(nickname)
+            counter += 1
             if datetime.today() > start_datetime + timedelta(minutes=stop_after_minutes, hours=stop_after_hours):
                 break
         print(f'Need to recheck {len(nicknames)} users')
@@ -59,7 +63,7 @@ def daily(PATH_TO_DB: str,
     end_datetime = datetime.today()
 
     clear_output(wait=True)
-    print(f'Updated {n_users} users in {end_datetime - start_datetime}')
+    print(f'Updated {counter} users in {end_datetime - start_datetime}')
     if check_plans:
         print(f'Total {updated_users} users updated for last 30 days')
         print(f'For actualization - {num_of_users} users')
