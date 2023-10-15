@@ -85,8 +85,10 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
     """
     if with_ratings:
         join_type = 'INNER'
+        join_filter = ''
     else:
-        join_type = 'LEFT OUTER'
+        join_type = 'LEFT'
+        join_filter = 'OR r.user_id IS NULL'
 
     conn = sqlite3.connect(PATH_TO_DB)
     cursor = conn.cursor()
@@ -97,7 +99,7 @@ def get_users_for_scrap(PATH_TO_DB: str, n_users=10000, with_ratings=True) -> li
                     {join_type} JOIN (SELECT DISTINCT user_id
                                 FROM ratings) r
                     ON u.user_id = r.user_id
-                    WHERE u.deleted = 0
+                    WHERE u.deleted = 0 {join_filter}
                     ORDER BY u.last_check ASC
                     LIMIT {n_users}
                     ''')
